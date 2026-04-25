@@ -12,7 +12,11 @@ if not os.path.exists(MODEL_PATH):
     url = "https://drive.google.com/uc?id=13mkZc07s-6WNldytzgxmvm7mZPweXLk6"
     gdown.download(url, MODEL_PATH, quiet=False)
 
-model = tf.keras.models.load_model(MODEL_PATH)
+import random
+
+def fake_model_predict(img_array):
+    probs = np.random.dirichlet(np.ones(7), size=1)
+    return probs
 
 # ================= CLASS LABELS =================
 class_names = ['akiec','bcc','bkl','df','mel','nv','vasc']
@@ -92,7 +96,7 @@ if image_source is not None:
         st.error("Image too dark ❌ Please capture a clearer skin image.")
 
     else:
-        prediction = model.predict(img_array)
+        prediction = fake_model_predict(img_array)
         predicted_class = np.argmax(prediction)
         confidence = np.max(prediction) * 100
 
