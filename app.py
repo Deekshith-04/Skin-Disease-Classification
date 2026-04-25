@@ -2,14 +2,22 @@ import streamlit as st
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+import gdown
+import os
 
-# Load trained model
-model = tf.keras.models.load_model("skin_model.h5")
+# ================= MODEL DOWNLOAD =================
+MODEL_PATH = "skin_model.h5"
 
-# Class labels
+if not os.path.exists(MODEL_PATH):
+    url = "https://drive.google.com/uc?id=13mkZc07s-6WNldytzgxmvm7mZPweXLk6"
+    gdown.download(url, MODEL_PATH, quiet=False)
+
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# ================= CLASS LABELS =================
 class_names = ['akiec','bcc','bkl','df','mel','nv','vasc']
 
-# Disease information
+# ================= DISEASE INFO =================
 disease_info = {
     "akiec": {
         "name":"Actinic Keratoses",
@@ -48,17 +56,16 @@ disease_info = {
     }
 }
 
+# ================= UI =================
 st.title("Skin Disease Classification System")
 st.write("Upload a skin image or scan using camera.")
 
-# Prediction history storage
+# ================= HISTORY =================
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# Upload image
+# ================= INPUT =================
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","jpeg","png"])
-
-# Camera capture
 camera_image = st.camera_input("Scan using Camera")
 
 image_source = None
@@ -68,36 +75,36 @@ if uploaded_file is not None:
 elif camera_image is not None:
     image_source = camera_image
 
+# ================= PROCESS =================
 if image_source is not None:
 
     image = Image.open(image_source).convert("RGB")
     st.image(image, caption="Selected Image", use_column_width=True)
 
     image = image.resize((64,64))
-    img_array = np.array(image)
-    img_array = img_array / 255.0
+    img_array = np.array(image) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
+    # Brightness check (FIX for black images)
     brightness = np.mean(img_array)
 
     if brightness < 0.15:
-        st.error("Image too dark. Please capture a clearer skin image.")
+        st.error("Image too dark ❌ Please capture a clearer skin image.")
 
     else:
-
         prediction = model.predict(img_array)
         predicted_class = np.argmax(prediction)
         confidence = np.max(prediction) * 100
 
+        # Confidence check
         if confidence < 60:
-            st.warning("Prediction confidence is low. Please upload a clearer skin image.")
+            st.warning("Low confidence ⚠️ Please upload a clearer skin image.")
 
         else:
-
             disease_code = class_names[predicted_class]
             info = disease_info[disease_code]
 
-            st.success("Prediction Completed")
+            st.success("Prediction Completed ✅")
 
             st.write("Disease Code:", disease_code)
             st.write("Full Name:", info["name"])
@@ -112,13 +119,13 @@ if image_source is not None:
             st.subheader("Prediction Probability")
             st.bar_chart(prediction[0])
 
-            # Save prediction history
+            # Save history
             st.session_state.history.append({
                 "Disease": info["name"],
                 "Confidence": round(confidence,2)
             })
 
-# Prediction history display
+# ================= HISTORY DISPLAY =================
 st.markdown("---")
 st.subheader("Prediction History")
 
@@ -127,7 +134,7 @@ if st.session_state.history:
 else:
     st.write("No predictions yet.")
 
-# Dataset statistics
+# ================= DATASET INFO =================
 st.markdown("---")
 st.subheader("Dataset Information")
 
@@ -147,7 +154,7 @@ dataset_stats = {
 
 st.bar_chart(dataset_stats)
 
-# Model performance
+# ================= MODEL INFO =================
 st.markdown("---")
 st.subheader("Model Performance")
 
@@ -161,5 +168,5 @@ st.write("Precision: ~0.70")
 st.write("Recall: ~0.69")
 st.write("F1 Score: ~0.69")
 
-# Disclaimer
+# ================= DISCLAIMER =================
 st.warning("This system is for educational purposes only and does not replace professional medical diagnosis.")
